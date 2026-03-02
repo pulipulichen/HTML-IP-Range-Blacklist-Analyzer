@@ -59,7 +59,10 @@
         <div class="space-y-2">
             <div class="flex justify-between items-center">
                 <label class="text-sm font-medium text-gray-700">分析結果 (更新後的已設定清單)</label>
-                <button onclick="copyResult()" class="text-blue-600 hover:underline text-sm font-bold">複製結果</button>
+                <div class="space-x-4">
+                    <span id="unknownCounter" class="text-xs font-bold text-orange-600"></span>
+                    <button onclick="copyResult()" class="text-blue-600 hover:underline text-sm font-bold">複製結果</button>
+                </div>
             </div>
             <textarea id="outputResult" readonly class="w-full h-64 p-3 border rounded-lg bg-gray-50 focus:outline-none" placeholder="結果將顯示於此..."></textarea>
         </div>
@@ -128,7 +131,8 @@
         // 解析單行資料
         function parseLine(line) {
             if (!line.trim()) return null;
-            const regex = /^\s*([\d\.\/]+)\s+"([^"]+)"\s*;?\s*#\s*Freq:\s*(\d+)\s*\/\s*Diff IPs:\s*(\d+)(?:\s*\/\s*Country:\s*([^#\n]+))?/;
+            // 修正正則，支援解析帶有 URL 的 Country 欄位
+            const regex = /^\s*([\d\.\/]+)\s+"([^"]+)"\s*;?\s*#\s*Freq:\s*(\d+)\s*\/\s*Diff IPs:\s*(\d+)(?:\s*\/\s*Country:\s*([^#\n\s]+))?/;
             const match = line.match(regex);
             if (match) {
                 const cidr = match[1];
@@ -236,7 +240,6 @@
                     const progress = Math.round(((i + 1) / pendingSuspects.length) * 100);
                     progressBar.style.width = progress + '%';
                     
-                    // 計算預估時間
                     const currentTime = Date.now();
                     const elapsed = (currentTime - startTime) / 1000;
                     const avgTimePerIp = elapsed / (i + 1);
@@ -261,13 +264,13 @@
 
             const prefix16Count = {};
             const countryStats = {};
+            let unknownFoundCount = 0;
 
             allItems.forEach(item => {
-                // 統計網段次數
                 prefix16Count[item.prefix16] = (prefix16Count[item.prefix16] || 0) + 1;
-                // 統計國家次數
                 const c = item.country || 'Unknown';
                 countryStats[c] = (countryStats[c] || 0) + 1;
+                if (c === 'Unknown') unknownFoundCount++;
             });
 
             allItems = allItems.map(item => {
@@ -280,20 +283,28 @@
                 return { ...item, groupName: updatedGroup };
             });
 
+            // 嚴格排序
             allItems.sort((a, b) => ipToLong(a.ip) - ipToLong(b.ip));
 
             const outputLines = allItems.map(item => {
                 const ipField = item.cidr.padEnd(18, ' ');
                 const groupField = `"${item.groupName}"`.padEnd(20, ' ');
-                return `    ${ipField} ${groupField} ;   # Freq: ${item.freq} / Diff IPs: ${item.diffIps} / Country: ${item.country || 'Unknown'}`;
+                let displayCountry = item.country || 'Unknown';
+                
+                // 如果是 Unknown，在輸出中加上 BrowserLeaks 連結
+                if (displayCountry === 'Unknown') {
+                    displayCountry = `Unknown (https://browserleaks.com/ip/${item.ip})`;
+                }
+
+                return `    ${ipField} ${groupField} ;   # Freq: ${item.freq} / Diff IPs: ${item.diffIps} / Country: ${displayCountry}`;
             });
 
             const finalResult = outputLines.join('\n');
             document.getElementById('outputResult').value = finalResult;
             document.getElementById('configInput').value = finalResult;
+            document.getElementById('unknownCounter').innerText = unknownFoundCount > 0 ? `待處理 Unknown: ${unknownFoundCount}` : '';
             localStorage.setItem(CONFIG_KEY, finalResult);
 
-            // 格式化國家統計資訊 (按數量降序)
             const statsStr = Object.entries(countryStats)
                 .sort((a, b) => b[1] - a[1])
                 .map(([name, count]) => `${name}: ${count}`)
