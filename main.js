@@ -56,7 +56,14 @@ document.getElementById('runAnalysis').addEventListener('click', async () => {
       const avgTimePerIp = elapsed / (i + 1);
       const remainingIps = pendingSuspects.length - (i + 1);
       const estimatedSeconds = Math.round(avgTimePerIp * remainingIps);
-      const timeInfo = estimatedSeconds > 0 ? ` (預計剩餘 ${estimatedSeconds} 秒)` : '';
+      
+      let timeInfo = '';
+      if (estimatedSeconds > 0) {
+        const finishTime = new Date(Date.now() + estimatedSeconds * 1000);
+        const hh = String(finishTime.getHours()).padStart(2, '0');
+        const mm = String(finishTime.getMinutes()).padStart(2, '0');
+        timeInfo = ` (估計 ${hh}:${mm} 完成)`;
+      }
 
       showStatus(`正在查詢 (${i + 1}/${pendingSuspects.length}): <strong>${parsed.cidr}</strong>${timeInfo}`, 'info');
 
