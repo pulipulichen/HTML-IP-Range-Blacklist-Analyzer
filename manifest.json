@@ -1,5 +1,5 @@
 {
-  "name": "IP 清單分析工具",
+  "name": "IP Blacklist Analyzer",
   "short_name": "IP 分析工具",
   "description": "A pure frontend web tool for analyzing and merging IP range blocklists.",
   "start_url": ".",
