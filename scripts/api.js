@@ -1,17 +1,27 @@
 // 查詢國家
 async function fetchCountryWithRetry(ip) {
   const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-  if (cache[ip]) return cache[ip];
+  if (cache[ip]) {
+    console.log(`Cache hit for ${ip}: ${cache[ip]}`);
+    return cache[ip];
+  }
 
   let currentIp = ip;
   let attempts = 0;
   const maxAttempts = 3;
 
   while (attempts <= maxAttempts) {
+
     try {
       await new Promise(resolve => setTimeout(resolve, 600));
       // const response = await fetch(`https://freeipapi.com/api/json/${currentIp}`);
-      const response = await fetch(`https://script.google.com/macros/s/AKfycbxn-NPm_mB6YYpZT2zex6LRSoc6iTvXu-VLslhIQjdY1xp4iRJ5KloLyWIDRzmfPX-CGg/exec?ip=${currentIp}`);
+      // console.log('version 3')
+      // console.log(`https://script.google.com/macros/s/AKfycbxn-NPm_mB6YYpZT2zex6LRSoc6iTvXu-VLslhIQjdY1xp4iRJ5KloLyWIDRzmfPX-CGg/exec?ip=${currentIp}`)
+
+      const response = await fetch(`https://script.google.com/macros/s/AKfycbxn-NPm_mB6YYpZT2zex6LRSoc6iTvXu-VLslhIQjdY1xp4iRJ5KloLyWIDRzmfPX-CGg/exec?ip=${currentIp}`, {
+        redirect: "follow"   // 允許自動跟隨轉址 (預設值)
+      });
+      // console.log('returned')
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
       if (data.countryName && data.countryName !== 'Unknown') {
@@ -22,6 +32,7 @@ async function fetchCountryWithRetry(ip) {
       }
     } catch (e) {
       console.warn(`Attempt ${attempts + 1} failed for ${currentIp}`);
+      console.error(e)
     }
     currentIp = incrementIP(currentIp);
     attempts++;
